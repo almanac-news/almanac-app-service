@@ -2,7 +2,6 @@ from flask import Flask
 from flask_restful import Resource, Api
 import requests
 import unicodedata
-from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 api = Api(app)

@@ -5,7 +5,7 @@ python:
 install:
   - "pip install -r requirements.txt"
 # command to run tests
-script: "python -m almanac-app-service.test.test -v"
+script: "cd .. && python -m almanac-app-service.test.test -v"
 
 notifications:
   webhooks:

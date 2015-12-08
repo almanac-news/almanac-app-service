@@ -6,9 +6,6 @@ import tempfile
 
 class SimpleTest(unittest.TestCase):
 
-    # def check_content_type(headers):
-    #     eq_(headers['Content-Type'], 'application/json')
-
     #basic setup
     def setUp(self):
         app.config['TESTING'] = True

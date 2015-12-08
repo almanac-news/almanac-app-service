@@ -71,4 +71,4 @@ api.add_resource(GetNewswire, '/news')
 api.add_resource(GetTop, '/top/<category>')
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')

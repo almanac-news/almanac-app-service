@@ -2,6 +2,7 @@ from flask import Flask
 from flask_restful import Resource, Api
 import requests
 import unicodedata
+import numpy
 
 app = Flask(__name__)
 api = Api(app)
@@ -30,11 +31,20 @@ def mapFinData(obj):
     obj["data"] = map(extractData, finData["query"]['results']['quote'])
     return obj
 
+# def mean(list):
+#
+# def standardDev(obj):
+#     length = len(list)
+#     mean = reduce(lambda x, y: x + y, list) / length
+#     differences = map(lambda x: math.sqrt(x - mean), list)
+#     variance = reduce(lambda x, y: x + y, differences) / length
+#     return math.sqrt(variance)
+
 #Flask-RESTful syntax to set up an api endpoint that hits NYT newswire, then gets relevant financial data from Yahoo finance
 # and parses the results into a JSON object
 class GetNewswire(Resource):
     def get(self):
-        uri = "http://api.nytimes.com/svc/news/v3/content/all/all/2?api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
+        uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
 
         r = requests.get(uri)
         objectResp = r.json()
@@ -59,9 +69,9 @@ class GetTop(Resource):
         return data
 
 #Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
-#from (arbitrarily) 2015-11-03 and end date - whenever the article was published
+#from (arbitrarily) 2015-11-23 and end date - whenever the article was published
 def getFinData(date):
-    urlFirst = "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22EUR%3DX%22%20and%20startDate%20%3D%20%222015-11-03%22%20and%20endDate%20%3D%20%22"
+    urlFirst = "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22EUR%3DX%22%20and%20startDate%20%3D%20%222015-11-23%22%20and%20endDate%20%3D%20%22"
     urlSecond = "%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
     r = requests.get(urlFirst + date + urlSecond)
     return r.json()

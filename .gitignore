@@ -4,3 +4,8 @@ venv
 
 # Mac OS X custom attribute files
 .DS_Store
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml

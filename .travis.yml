@@ -7,7 +7,7 @@ install:
   - "pip install -r requirements.txt"
 
 # command to run tests
-script: "cd .. && python -m almanac-app-service.test.test -v"
+script: "nosetests -v --with-coverage --cover-inclusive --cover-package=server"
 
 notifications:
   webhooks:

@@ -1,8 +1,7 @@
 import json
 import os
-from ..server.app import app
+from app import app
 import unittest
-import tempfile
 
 class SimpleTest(unittest.TestCase):
 

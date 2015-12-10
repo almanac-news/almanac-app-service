@@ -9,6 +9,10 @@ api = Api(app)
 
 app.config.from_envvar('APP_SETTINGS', silent=True)
 
+@app.route('/')
+def landing_page():
+    return "Swole Team 6"
+
 #Convert unicode data we get back from NYT to ASCII
 def normalize(unicode):
     return unicodedata.normalize('NFKD', unicode).encode('ascii', 'ignore')
@@ -68,6 +72,14 @@ class GetTop(Resource):
         data = map(mapFinData, articles)
         return data
 
+#API endpoint: for a given date parameter, get a series of currency data from the date set in getFinData
+#up until that date
+class GetFinData(Resource):
+    def get(self, date):
+        finData = getFinData(date)
+        series = map(extractData, finData["query"]['results']['quote'])
+        return series
+
 #Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
 #from (arbitrarily) 2015-11-23 and end date - whenever the article was published
 def getFinData(date):
@@ -79,6 +91,7 @@ def getFinData(date):
 #Attach the endpoints to the correct url
 api.add_resource(GetNewswire, '/news')
 api.add_resource(GetTop, '/top/<category>')
+api.add_resource(GetFinData, '/date/<date>')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=3000)
+    app.run(host='0.0.0.0')

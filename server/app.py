@@ -72,6 +72,14 @@ class GetTop(Resource):
         data = map(mapFinData, articles)
         return data
 
+#Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
+#from (arbitrarily) 2015-11-23 and end date - whenever the article was published
+def getFinData(date):
+    urlFirst = "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22EUR%3DX%22%20and%20startDate%20%3D%20%222015-11-23%22%20and%20endDate%20%3D%20%22"
+    urlSecond = "%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
+    r = requests.get(urlFirst + date + urlSecond)
+    return r.json()
+
 #API endpoint: for a given date parameter, get a series of currency data from the date set in getFinData
 #up until that date
 class GetFinData(Resource):
@@ -80,13 +88,6 @@ class GetFinData(Resource):
         series = map(extractData, finData["query"]['results']['quote'])
         return series
 
-#Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
-#from (arbitrarily) 2015-11-23 and end date - whenever the article was published
-def getFinData(date):
-    urlFirst = "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22EUR%3DX%22%20and%20startDate%20%3D%20%222015-11-23%22%20and%20endDate%20%3D%20%22"
-    urlSecond = "%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
-    r = requests.get(urlFirst + date + urlSecond)
-    return r.json()
 
 #Attach the endpoints to the correct url
 api.add_resource(GetNewswire, '/news')

@@ -1,0 +1,24 @@
+# circle.yml
+machine:
+  python:
+    version: 2.7.9
+  services:
+    - docker
+
+dependencies:
+  pre:
+    - pip install awscli
+
+test:
+  override:
+    - docker build -t almanac/app-service:$CIRCLE_SHA1 .
+  post:
+    - docker run -d -p 5000:5000 -e "SECRET_KEY_BASE=abcd1234" almanac/app-service:$CIRCLE_SHA1; sleep 10
+    - curl --retry 10 --retry-delay 5 -v http://localhost:5000
+
+deployment:
+  elasticbeanstalk:
+    branch: dev
+    commands:
+      - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
+      - ./deploy.sh $CIRCLE_SHA1

@@ -1,7 +1,7 @@
 {
   "AWSEBDockerrunVersion": "1",
   "Image": {
-    "Name": "smehraein/almanac-app",
+    "Name": "almanac/app-service",
     "Update": "true"
   },
   "Ports": [

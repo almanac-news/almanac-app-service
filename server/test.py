@@ -25,5 +25,12 @@ class SimpleTest(unittest.TestCase):
 
         self.assertIsInstance(resp, list)
 
+    #test that hitting the '/date/<date>' route with a date returns a list structure
+    def test_date(self):
+        rv = self.app.get('/date/2015-12-08')
+        resp = json.loads(rv.data)
+
+        self.assertIsInstance(resp, list)
+
 if __name__ == '__main__':
     unittest.main()

@@ -35,15 +35,6 @@ def mapFinData(obj):
     obj["data"] = map(extractData, finData["query"]['results']['quote'])
     return obj
 
-# def mean(list):
-#
-# def standardDev(obj):
-#     length = len(list)
-#     mean = reduce(lambda x, y: x + y, list) / length
-#     differences = map(lambda x: math.sqrt(x - mean), list)
-#     variance = reduce(lambda x, y: x + y, differences) / length
-#     return math.sqrt(variance)
-
 #Flask-RESTful syntax to set up an api endpoint that hits NYT newswire, then gets relevant financial data from Yahoo finance
 # and parses the results into a JSON object
 class GetNewswire(Resource):

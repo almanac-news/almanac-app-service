@@ -7,6 +7,7 @@ aws configure set default.region us-west-2
 aws configure set default.output json
 
 SHA1=$1
+ENVNAME=$2
 
 # Deploy image to Docker Hub
 docker push almanac/app-service:$SHA1
@@ -20,5 +21,5 @@ aws elasticbeanstalk create-application-version --application-name Almanac-News 
   --version-label $SHA1 --source-bundle S3Bucket=$EB_BUCKET,S3Key=$DOCKERRUN_FILE
 
 # Update Elastic Beanstalk environment to new version
-aws elasticbeanstalk update-environment --environment-name almanacNews-envTEST \
+aws elasticbeanstalk update-environment --environment-name $ENVNAME \
     --version-label $SHA1

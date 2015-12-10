@@ -2,7 +2,7 @@ from flask import Flask
 from flask_restful import Resource, Api
 import requests
 import unicodedata
-import numpy
+# import numpy
 
 app = Flask(__name__)
 api = Api(app)
@@ -11,7 +11,7 @@ app.config.from_envvar('APP_SETTINGS', silent=True)
 
 @app.route('/')
 def landing_page():
-    return "Swole Team 6"
+    return "JOB SEARCH DIESEL!!!!!!!!!!!!!!!!!!!!"
 
 #Convert unicode data we get back from NYT to ASCII
 def normalize(unicode):
@@ -46,9 +46,11 @@ class GetNewswire(Resource):
         #pull out relevant information only
         articles = map(extractArticles, objectResp["results"])
 
-        #attach relevant financial data to each article's dict
-        data = map(mapFinData, articles)
-        return data
+        # #attach relevant financial data to each article's dict
+        # data = map(mapFinData, articles)
+        # return data
+
+        return articles
 
 #API endpoint to get top stories categorically w/ financial data.
 #Valid categories include: home, world, national, politics, nyregion, business, opinion,
@@ -60,8 +62,11 @@ class GetTop(Resource):
         objectResp = r.json()
         articles = map(extractArticles, objectResp["results"])
 
-        data = map(mapFinData, articles)
-        return data
+        # data = map(mapFinData, articles)
+        # return data
+
+        #return just the top 10 for now
+        return articles[0:9]
 
 #Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
 #from (arbitrarily) 2015-11-23 and end date - whenever the article was published

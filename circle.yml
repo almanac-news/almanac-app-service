@@ -18,9 +18,7 @@ test:
 
 notify:
   webhooks:
-    # A list of hook hashes, containing the url field
-    # gitter hook
-    - url: $GITTER
+    - url: https://webhooks.gitter.im/e/c2658ec4ce7f0836941c
 
 deployment:
   development:

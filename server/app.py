@@ -3,8 +3,11 @@ from flask_restful import Resource, Api
 import requests
 import unicodedata
 # import numpy
+from flask.ext.cors import CORS
 
 app = Flask(__name__)
+#enable cross-origin headers
+CORS(app)
 api = Api(app)
 
 app.config.from_envvar('APP_SETTINGS', silent=True)

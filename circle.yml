@@ -16,6 +16,12 @@ test:
     - docker run -d -p 5000:5000 -e "SECRET_KEY_BASE=abcd1234" almanac/app-service:$CIRCLE_SHA1; sleep 10
     - curl --retry 10 --retry-delay 5 -v http://localhost:5000
 
+notify:
+  webhooks:
+    # A list of hook hashes, containing the url field
+    # gitter hook
+    - url: $GITTER
+
 deployment:
   development:
     branch: dev

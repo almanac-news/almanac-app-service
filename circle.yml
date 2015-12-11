@@ -11,7 +11,7 @@ deployment:
   development:
     branch: dev
     commands:
-      - $DEPLOY
+      - $DEPLOY_DEV
   production:
     branch: master
     commands:

@@ -2,11 +2,13 @@ aniso8601==1.1.0
 beautifulsoup4==4.4.1
 coverage==4.0.3
 Flask==0.10.1
+Flask-Cors==2.1.2
 Flask-RESTful==0.3.4
 itsdangerous==0.24
 Jinja2==2.8
 MarkupSafe==0.23
 nose==1.3.7
+numpy==1.10.1
 python-dateutil==2.4.2
 pytz==2015.7
 requests==2.8.1

@@ -43,11 +43,12 @@ def extractData(obj):
 
 #Map extractData onto the series of data retrieved from Yahoo for each news article's window of time
 #obj represents an article's dict as composed from extractArticles
-def mapFinData(obj):
-    finData = getFinData(obj["created_date"])
-    #attach the data to a key on the obj
-    obj["data"] = map(extractData, finData["query"]['results']['quote'])
-    return obj
+#CURRENTLY UNNECESSARY DUE TO 'date/<date>' ROUTE
+# def mapFinData(obj):
+#     finData = getFinData(obj["created_date"])
+#     #attach the data to a key on the obj
+#     obj["data"] = map(extractData, finData["query"]['results']['quote'])
+#     return obj
 
 #Flask-RESTful syntax to set up an api endpoint that hits NYT newswire, then gets relevant financial data from Yahoo finance
 # and parses the results into a JSON object

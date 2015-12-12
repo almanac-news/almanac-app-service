@@ -7,8 +7,7 @@ test:
   override:
     - nosetests -v --with-coverage --cover-package=server
   post:
-    - if [[ ! -z $CI_PULL_REQUEST ]] ; then coveralls ; fi
-    - echo $CI_PULL_REQUEST
+    - coveralls
 
 notify:
   webhooks:

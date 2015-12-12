@@ -5,8 +5,8 @@ machine:
 
 test:
   override:
-    - nosetests -v --with-coverage --cover-inclusive --cover-package=server
-    post:
+    - nosetests -v --with-coverage --cover-package=server
+  post:
     - coveralls
 
 notify:

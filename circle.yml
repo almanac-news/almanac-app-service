@@ -7,7 +7,7 @@ test:
   override:
     - nosetests -v --with-coverage --cover-package=server
   post:
-    - if [[ ! -z $CIRCLE_PULL_REQUEST ]] ; then coveralls -i ; fi
+    - if [ ! -z $CIRCLE_PULL_REQUEST ] ; then coveralls -i ; fi
 
 notify:
   webhooks:

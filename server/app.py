@@ -1,9 +1,12 @@
+ # coding=UTF-8
 from flask import Flask
 from flask_restful import Resource, Api
 import requests
 import unicodedata
 # import numpy
 from flask.ext.cors import CORS
+import urllib
+import json
 
 app = Flask(__name__)
 #enable cross-origin headers
@@ -14,15 +17,23 @@ app.config.from_envvar('APP_SETTINGS', silent=True)
 
 @app.route('/')
 def landing_page():
-    return "JOB SEARCH DIESEL!!!!!!!!!!!!!!!!!!!!"
+    return "JOB SEARCH DIESEL!!!!!!!!!!"
 
 #Convert unicode data we get back from NYT to ASCII
 def normalize(unicode):
-    return unicodedata.normalize('NFKD', unicode).encode('ascii', 'ignore')
+    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'")
+    return result
+    # query = urllib.quote(unicode.encode('utf8', 'replace'))
+    # return urllib.unquote(query).decode('utf8')
 
 #Mapping function to extract title, abstract, url, and date from the response array
 def extractArticles(obj):
-    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': normalize(obj['url']), 'created_date': obj['created_date'][0:10]}
+    url = urllib.quote(obj['url'], safe='')
+    access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
+    uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
+    r = requests.get(uri)
+    print obj['title']
+    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-2], 'created_date': obj['created_date'][0:10]}
 
 #Mapping function to pull out and compose the date and closing value for each day in the
 #list of results from Yahoo
@@ -45,7 +56,9 @@ class GetNewswire(Resource):
         uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
 
         r = requests.get(uri)
-        objectResp = r.json()
+        print r.headers['content-type']
+        print r.encoding
+        objectResp = json.loads(normalize(r.text))
         #pull out relevant information only
         articles = map(extractArticles, objectResp["results"])
 

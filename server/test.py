@@ -32,5 +32,9 @@ class SimpleTest(unittest.TestCase):
 
         self.assertIsInstance(resp, list)
 
+    def test_landing(self):
+        rv = self.app.get('/')
+        assert "JOB SEARCH DIESEL!!!!!!!!!!" in rv.data
+
 if __name__ == '__main__':
     unittest.main()

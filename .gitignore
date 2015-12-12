@@ -1,6 +1,8 @@
 # Virtualenv
 .Python
 venv
+.coverage
+*.pyc
 
 # Mac OS X custom attribute files
 .DS_Store

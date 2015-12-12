@@ -6,8 +6,6 @@ machine:
 test:
   override:
     - nosetests -v --with-coverage --cover-package=server
-  post:
-    - coveralls -i
 
 notify:
   webhooks:
@@ -17,8 +15,10 @@ deployment:
   development:
     branch: dev
     commands:
+      - coveralls -i
       - $DEPLOY_DEV
   production:
     branch: master
     commands:
+      - coveralls -i
       - $DEPLOY

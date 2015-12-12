@@ -1,11 +1,7 @@
 # .coveragerc to control nosetests coverage
-[run]
-branch = True
 
 [report]
 omit =
     */python?.?/*
     */site-packages/nose/*
-
-[html]
-directory = coverage_html_report
+    

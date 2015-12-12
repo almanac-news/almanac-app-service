@@ -1,4 +1,4 @@
-[![Build Status](https://circleci.com/gh/almanac-news/almanac-app-service.svg?style=shield&circle-token=:circle-token)](https://circleci.com/gh/almanac-news/almanac-app-service.svg?style=shield&circle-token=:circle-token)
+[![Build Status](https://circleci.com/gh/almanac-news/almanac-app-service.svg?style=shield&circle-token=:circle-token)](https://circleci.com/gh/almanac-news/almanac-app-service)
 
 [![Coverage Status](https://coveralls.io/repos/almanac-news/almanac-app-service/badge.svg?branch=dev&service=github)](https://coveralls.io/github/almanac-news/almanac-app-service?branch=dev)
 

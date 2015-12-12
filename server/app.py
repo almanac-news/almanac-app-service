@@ -19,17 +19,19 @@ app.config.from_envvar('APP_SETTINGS', silent=True)
 def landing_page():
     return "JOB SEARCH DIESEL!!!!!!!!!!"
 
-#Convert unicode data we get back from NYT to ASCII
+#Format unicode we get back from NYT properly, replacing unprintable characters
 def normalize(unicode):
-    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'")
+    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace('—','-')
     return result
     # query = urllib.quote(unicode.encode('utf8', 'replace'))
     # return urllib.unquote(query).decode('utf8')
 
 #Mapping function to extract title, abstract, url, and date from the response array
 def extractArticles(obj):
+    #format long-url in 'url' formatting
     url = urllib.quote(obj['url'], safe='')
     access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
+    #query bitly with long-url to get shortened version
     uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
     r = requests.get(uri)
     print obj['title']

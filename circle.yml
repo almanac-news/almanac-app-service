@@ -6,6 +6,8 @@ machine:
 test:
   override:
     - nosetests -v --with-coverage --cover-inclusive --cover-package=server
+    post:
+    - coveralls
 
 notify:
   webhooks:

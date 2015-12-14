@@ -17,12 +17,13 @@ app.config.from_envvar('APP_SETTINGS', silent=True)
 
 @app.route('/')
 def landing_page():
-    return "JOB SEARCH DIESEL!!!!!!!!!!"
+    return "JOB SEARCH DIESEL!!!!!!!!!!!"
 
 #Format unicode we get back from NYT properly, replacing unprintable characters
-def normalize(unicode):
-    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace('—','-')
+def normalize(uni):
+    result = (uni.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-')
     return result
+    # unicode.decode('utf-8', result).normalize('NFKD', result).encode('ascii','ignore')
     # query = urllib.quote(unicode.encode('utf8', 'replace'))
     # return urllib.unquote(query).decode('utf8')
 
@@ -35,7 +36,7 @@ def extractArticles(obj):
     uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
     r = requests.get(uri)
     print obj['title']
-    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-2], 'created_date': obj['created_date'][0:10]}
+    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10]}
 
 #Mapping function to pull out and compose the date and closing value for each day in the
 #list of results from Yahoo
@@ -57,11 +58,20 @@ def extractData(obj):
 class GetNewswire(Resource):
     def get(self):
         uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
+        try:
+            r = requests.get(uri)
+        except requests.exceptions.Timeout:
+            return "API request timeout"
+        except requests.exceptions.RequestException as e:
+            print e
+            return e
 
-        r = requests.get(uri)
         print r.headers['content-type']
         print r.encoding
-        objectResp = json.loads(normalize(r.text))
+
+        r.raise_for_status()
+        objectResp = r.json()
+        print objectResp["results"]
         #pull out relevant information only
         articles = map(extractArticles, objectResp["results"])
 
@@ -77,15 +87,29 @@ class GetNewswire(Resource):
 class GetTop(Resource):
     def get(self, category):
         uri = "http://api.nytimes.com/svc/topstories/v1/" + category + ".json?api-key=073b7d846c48b66824b40bffc377123c:8:73664181"
-        r = requests.get(uri)
+        try:
+            r = requests.get(uri)
+        except requests.exceptions.Timeout:
+            return "API request timeout"
+        except requests.exceptions.RequestException as e:
+            print e
+            return e
+            # sys.exit(1)
+        # print r.content
+        print r.status_code
+        #raises stored HTTP error if one occured
+        r.raise_for_status()
         objectResp = r.json()
         articles = map(extractArticles, objectResp["results"])
-
         # data = map(mapFinData, articles)
         # return data
 
+        if r.status_code != 200:
+            return 'NYT API returned with code: ' + r.status_code
         #return just the top 10 for now
-        return articles[0:9]
+        else:
+            return articles[0:9]
+
 
 #Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
 #from (arbitrarily) 2015-11-23 and end date - whenever the article was published

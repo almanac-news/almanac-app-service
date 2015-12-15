@@ -32,7 +32,6 @@ def extractArticles(obj):
     access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
     uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
     r = requests.get(uri)
-    print obj['title']
     return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-2], 'created_date': obj['created_date'][0:10]}
 
 #Mapping function to pull out and compose the date and closing value for each day in the
@@ -57,8 +56,6 @@ class GetNewswire(Resource):
         uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
 
         r = requests.get(uri)
-        print r.headers['content-type']
-        print r.encoding
         objectResp = json.loads(normalize(r.text))
         #pull out relevant information only
         articles = map(extractArticles, objectResp["results"])

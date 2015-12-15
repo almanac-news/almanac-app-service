@@ -17,7 +17,7 @@ app.config.from_envvar('APP_SETTINGS', silent=True)
 
 @app.route('/')
 def landing_page():
-    return "I HATE REACT!"
+    return "JOB SEARCH DIESEL!!!!!!!!!!"
 
 #Format unicode we get back from NYT properly, replacing unprintable characters
 def normalize(uni):

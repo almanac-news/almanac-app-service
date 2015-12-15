@@ -35,12 +35,7 @@ def extractArticles(obj):
     #query bitly with long-url to get shortened version
     uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
     r = requests.get(uri)
-<<<<<<< HEAD
     return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-2], 'created_date': obj['created_date'][0:10]}
-=======
-    print obj['title']
-    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10]}
->>>>>>> 0183d20e69b7e8fd3a9477f6894de8c446778d4f
 
 #Mapping function to pull out and compose the date and closing value for each day in the
 #list of results from Yahoo
@@ -67,20 +62,10 @@ class GetNewswire(Resource):
         except requests.exceptions.Timeout:
             return "API request timeout"
         except requests.exceptions.RequestException as e:
-            print e
             return e
 
-<<<<<<< HEAD
         r = requests.get(uri)
         objectResp = json.loads(normalize(r.text))
-=======
-        print r.headers['content-type']
-        print r.encoding
-
-        r.raise_for_status()
-        objectResp = r.json()
-        print objectResp["results"]
->>>>>>> 0183d20e69b7e8fd3a9477f6894de8c446778d4f
         #pull out relevant information only
         articles = map(extractArticles, objectResp["results"])
 
@@ -101,11 +86,8 @@ class GetTop(Resource):
         except requests.exceptions.Timeout:
             return "API request timeout"
         except requests.exceptions.RequestException as e:
-            print e
             return e
             # sys.exit(1)
-        # print r.content
-        print r.status_code
         #raises stored HTTP error if one occured
         r.raise_for_status()
         objectResp = r.json()

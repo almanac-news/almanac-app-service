@@ -6,6 +6,8 @@ machine:
 test:
   override:
     - nosetests -v --with-coverage --cover-package=server
+  post:
+    - echo Praise Yeezus
 
 notify:
   webhooks:

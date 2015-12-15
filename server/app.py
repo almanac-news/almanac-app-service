@@ -4,13 +4,11 @@ from flask_restful import Resource, Api
 import requests
 import unicodedata
 # import numpy
-from flask.ext.cors import CORS
 import urllib
 import json
 
 app = Flask(__name__)
 #enable cross-origin headers
-CORS(app)
 api = Api(app)
 
 app.config.from_envvar('APP_SETTINGS', silent=True)
@@ -20,8 +18,8 @@ def landing_page():
     return "JOB SEARCH DIESEL!!!!!!!!!!"
 
 #Format unicode we get back from NYT properly, replacing unprintable characters
-def normalize(uni):
-    result = (uni.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-')
+def normalize(unicode):
+    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-')
     return result
     # unicode.decode('utf-8', result).normalize('NFKD', result).encode('ascii','ignore')
     # query = urllib.quote(unicode.encode('utf8', 'replace'))
@@ -33,9 +31,10 @@ def extractArticles(obj):
     url = urllib.quote(obj['url'], safe='')
     access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
     #query bitly with long-url to get shortened version
-    uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
-    r = requests.get(uri)
-    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-2], 'created_date': obj['created_date'][0:10]}
+    bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
+    r = requests.get(bitly_uri)
+    # print obj['title']
+    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10]}
 
 #Mapping function to pull out and compose the date and closing value for each day in the
 #list of results from Yahoo
@@ -62,10 +61,15 @@ class GetNewswire(Resource):
         except requests.exceptions.Timeout:
             return "API request timeout"
         except requests.exceptions.RequestException as e:
+            # print e
             return e
 
-        r = requests.get(uri)
-        objectResp = json.loads(normalize(r.text))
+        # print r.headers['content-type']
+        # print r.encoding
+
+        r.raise_for_status()
+        objectResp = r.json()
+        # print objectResp["results"]
         #pull out relevant information only
         articles = map(extractArticles, objectResp["results"])
 
@@ -86,8 +90,11 @@ class GetTop(Resource):
         except requests.exceptions.Timeout:
             return "API request timeout"
         except requests.exceptions.RequestException as e:
+            # print e
             return e
             # sys.exit(1)
+        # print r.content
+        # print r.status_code
         #raises stored HTTP error if one occured
         r.raise_for_status()
         objectResp = r.json()
@@ -123,6 +130,10 @@ class GetFinData(Resource):
 api.add_resource(GetNewswire, '/news')
 api.add_resource(GetTop, '/top/<category>')
 api.add_resource(GetFinData, '/date/<date>')
+
+@app.errorhandler(500)
+def interna_server_error(e):
+    return e
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')

@@ -1,0 +1,24 @@
+# circle.yml
+machine:
+  python:
+    version: 2.7.9
+
+test:
+  override:
+    - nosetests -v --with-coverage --cover-package=server
+
+notify:
+  webhooks:
+    - url: https://webhooks.gitter.im/e/c2658ec4ce7f0836941c
+
+deployment:
+  development:
+    branch: dev
+    commands:
+      - coveralls -i
+      - $DEPLOY_DEV
+  production:
+    branch: master
+    commands:
+      - coveralls -i
+      - $DEPLOY

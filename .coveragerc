@@ -1,0 +1,7 @@
+# .coveragerc to control nosetests coverage
+
+[report]
+omit =
+    */python?.?/*
+    */site-packages/nose/*
+    

@@ -8,12 +8,35 @@ import json
 import logging
 import HTMLParser
 import redis
+from bs4 import BeautifulSoup
+import cookielib
+import mechanize
+from readability.readability import Document
 
 #error logging
-logging.basicConfig()
+# logging.basicConfig()
 
 #setup redis connection
-rs = redis.StrictRedis(host='localhost', port=6379, db=0)
+rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
+
+# setup connection to NYT and programmatically login with mechanize
+# def browseNYT():
+#mechanize setup for cookies and ignoring robots.txt
+cj = cookielib.CookieJar()
+#put the 'browser' object in the global scope
+br = mechanize.Browser()
+br.set_handle_robots(False)
+br.set_cookiejar(cj)
+
+#login url
+url = 'https://myaccount.nytimes.com/auth/login'
+#mechanize syntax, open the login page
+br.open(url)
+#select login form and login with user credentials
+br.select_form(nr=0)
+br.form['userid'] = 'natejlevine@gmail.com'
+br.form['password'] = 'monkeybisness'
+br.submit()
 
 #configure flask app
 app = Flask(__name__)
@@ -26,7 +49,7 @@ def landing_page():
 
 #Format unicode we get back from NYT properly, replacing unprintable characters
 def normalize(unicode):
-    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-')
+    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-').replace(' ', ' ')
     return result
     # unicode.decode('utf-8', result).normalize('NFKD', result).encode('ascii','ignore')
     # query = urllib.quote(unicode.encode('utf8', 'replace'))
@@ -41,11 +64,25 @@ def extractArticles(obj):
     bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
     r = requests.get(bitly_uri)
 
-    #text_body =
+    key = r.text[-8:-1]
 
-    article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10]}
-    rs.hmset(r.text[-8:-1], article)
-    return article
+    if (rs.exists(key) == 0):
+        #scrape the news article
+        html = br.open(obj['url']).read()
+
+        #run the article through readability
+        readable_article = Document(html).summary()
+        readable_title = Document(html).title()
+
+        #run it through BeautifulSoup to parse only relevant tags
+        soup = BeautifulSoup(readable_article, 'lxml')
+
+        storycontent = (soup.find_all("p", { "class":"story-content" }))
+        encodedFinal = reduce(lambda x, y: x + '***' + y.text, storycontent, '')
+
+        article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
+        rs.hmset(key, article)
+        rs.expire(key, 3600)
 
 #Mapping function to pull out and compose the date and closing value for each day in the
 #list of results from Yahoo
@@ -81,8 +118,9 @@ class GetNewswire(Resource):
 
         objectResp = json.loads(h.unescape(r.text))
         #pull out relevant information only
-        articles = map(extractArticles, objectResp["results"])
-        return articles
+        for obj in objectResp["results"]:
+            extractArticles(obj)
+        return 'Did the redis thing'
 
 #API endpoint to get top stories categorically w/ financial data.
 #Valid categories include: home, world, national, politics, nyregion, business, opinion,

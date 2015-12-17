@@ -3,14 +3,21 @@ from flask import Flask
 from flask_restful import Resource, Api
 import requests
 import unicodedata
-# import numpy
 import urllib
 import json
+import logging
+import HTMLParser
+import redis
 
+#error logging
+logging.basicConfig()
+
+#setup redis connection
+rs = redis.StrictRedis(host='localhost', port=6379, db=0)
+
+#configure flask app
 app = Flask(__name__)
-#enable cross-origin headers
 api = Api(app)
-
 app.config.from_envvar('APP_SETTINGS', silent=True)
 
 @app.route('/')
@@ -33,8 +40,12 @@ def extractArticles(obj):
     #query bitly with long-url to get shortened version
     bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
     r = requests.get(bitly_uri)
-    # print obj['title']
-    return {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10]}
+
+    #text_body =
+
+    article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10]}
+    rs.hmset(r.text[-8:-1], article)
+    return article
 
 #Mapping function to pull out and compose the date and closing value for each day in the
 #list of results from Yahoo
@@ -55,28 +66,22 @@ def extractData(obj):
 # and parses the results into a JSON object
 class GetNewswire(Resource):
     def get(self):
+        h = HTMLParser.HTMLParser()
         uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
         try:
             r = requests.get(uri)
         except requests.exceptions.Timeout:
             return "API request timeout"
         except requests.exceptions.RequestException as e:
-            # print e
             return e
 
-        # print r.headers['content-type']
-        # print r.encoding
-
+        #raises stored HTTP error if one occured
+        #hard to say if this works
         r.raise_for_status()
-        objectResp = r.json()
-        # print objectResp["results"]
+
+        objectResp = json.loads(h.unescape(r.text))
         #pull out relevant information only
         articles = map(extractArticles, objectResp["results"])
-
-        # #attach relevant financial data to each article's dict
-        # data = map(mapFinData, articles)
-        # return data
-
         return articles
 
 #API endpoint to get top stories categorically w/ financial data.
@@ -90,18 +95,14 @@ class GetTop(Resource):
         except requests.exceptions.Timeout:
             return "API request timeout"
         except requests.exceptions.RequestException as e:
-            # print e
             return e
-            # sys.exit(1)
-        # print r.content
-        # print r.status_code
+
         #raises stored HTTP error if one occured
         r.raise_for_status()
         objectResp = r.json()
         articles = map(extractArticles, objectResp["results"])
-        # data = map(mapFinData, articles)
-        # return data
 
+        #don't think this works
         if r.status_code != 200:
             return 'NYT API returned with code: ' + r.status_code
         #return just the top 10 for now
@@ -132,7 +133,7 @@ api.add_resource(GetTop, '/top/<category>')
 api.add_resource(GetFinData, '/date/<date>')
 
 @app.errorhandler(500)
-def interna_server_error(e):
+def internal_server_error(e):
     return e
 
 if __name__ == '__main__':

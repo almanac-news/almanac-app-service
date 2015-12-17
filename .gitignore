@@ -3,6 +3,7 @@
 venv
 .coverage
 *.pyc
+dump.rdb
 
 # Mac OS X custom attribute files
 .DS_Store

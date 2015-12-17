@@ -188,5 +188,4 @@ def populateNews():
 #     app.run(host='0.0.0.0')
 
 newsThread = threading.Thread(target=populateNews)
-newsThread.daemon = True
 newsThread.start()

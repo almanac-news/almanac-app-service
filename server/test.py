@@ -1,9 +1,12 @@
 import json
 import os
-from app import app
+# from app import app
 import unittest
 
 class SimpleTest(unittest.TestCase):
+
+    def test_true(self):
+        self.assertEqual (1+1, 2)
 
     #basic setup
     # def setUp(self):

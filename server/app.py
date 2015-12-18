@@ -1,11 +1,8 @@
  # coding=UTF-8
-# from flask import Flask
-# from flask_restful import Resource, Api
 import requests
 import unicodedata
 import urllib
 import json
-# import logging
 import HTMLParser
 import redis
 from bs4 import BeautifulSoup
@@ -15,14 +12,10 @@ from readability.readability import Document
 import time
 import threading
 
-#error logging
-# logging.basicConfig()
-
 #setup redis connection
 rs = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 # setup connection to NYT and programmatically login with mechanize
-# def browseNYT():
 #mechanize setup for cookies and ignoring robots.txt
 cj = cookielib.CookieJar()
 #put the 'browser' object in the global scope
@@ -40,15 +33,6 @@ br.form['userid'] = 'natejlevine@gmail.com'
 br.form['password'] = 'monkeybisness'
 br.submit()
 
-#configure flask app
-# app = Flask(__name__)
-# api = Api(app)
-# app.config.from_envvar('APP_SETTINGS', silent=True)
-
-# @app.route('/')
-# def landing_page():
-#     return "JOB SEARCH DIESEL!!!!!!!!!!"
-
 #Format unicode we get back from NYT properly, replacing unprintable characters
 def normalize(unicode):
     result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-').replace(' ', ' ')
@@ -57,7 +41,7 @@ def normalize(unicode):
     # query = urllib.quote(unicode.encode('utf8', 'replace'))
     # return urllib.unquote(query).decode('utf8')
 
-#Mapping function to extract title, abstract, url, and date from the response array
+#Function to scrape article text, clean and format it, and store it into redis under a hashmap
 def extractArticles(obj):
     #format long-url in 'url' formatting
     url = urllib.quote(obj['url'], safe='')
@@ -68,6 +52,7 @@ def extractArticles(obj):
 
     key = r.text[-8:-1]
 
+    #if article is not already in redis db
     if (rs.exists(key) == 0):
         #scrape the news article
         html = br.open(obj['url']).read()
@@ -79,10 +64,11 @@ def extractArticles(obj):
         #run it through BeautifulSoup to parse only relevant tags
         soup = BeautifulSoup(readable_article, 'lxml')
 
+        #grab story content tags and concat them together
         storycontent = (soup.find_all("p", { "class":"story-content" }))
         encodedFinal = reduce(lambda x, y: x + '***' + y.text, storycontent, '')
-
         article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
+
         rs.hmset(key, article)
         rs.expire(key, 3600)
 
@@ -101,8 +87,7 @@ def extractData(obj):
 #     obj["data"] = map(extractData, finData["query"]['results']['quote'])
 #     return obj
 
-#Flask-RESTful syntax to set up an api endpoint that hits NYT newswire, then gets relevant financial data from Yahoo finance
-# and parses the results into a JSON object
+#Pull articles from NYT Newswire API
 def getNews():
     h = HTMLParser.HTMLParser()
     uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
@@ -122,33 +107,6 @@ def getNews():
     for obj in objectResp["results"]:
         extractArticles(obj)
     # return 'Did the redis thing'
-    print 'got news'
-
-#API endpoint to get top stories categorically w/ financial data.
-#Valid categories include: home, world, national, politics, nyregion, business, opinion,
-#technology, science, health, sports, arts, fashion, dining, travel, magazine, realestate
-# class GetTop(Resource):
-#     def get(self, category):
-#         uri = "http://api.nytimes.com/svc/topstories/v1/" + category + ".json?api-key=073b7d846c48b66824b40bffc377123c:8:73664181"
-#         try:
-#             r = requests.get(uri)
-#         except requests.exceptions.Timeout:
-#             return "API request timeout"
-#         except requests.exceptions.RequestException as e:
-#             return e
-#
-#         #raises stored HTTP error if one occured
-#         r.raise_for_status()
-#         objectResp = r.json()
-#         articles = map(extractArticles, objectResp["results"])
-#
-#         #don't think this works
-#         if r.status_code != 200:
-#             return 'NYT API returned with code: ' + r.status_code
-#         #return just the top 10 for now
-#         else:
-#             return articles[0:9]
-
 
 #Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
 #from (arbitrarily) 2015-11-23 and end date - whenever the article was published
@@ -166,26 +124,12 @@ def getNews():
 #         series = map(extractData, finData["query"]['results']['quote'])
 #         return series
 
-
-#Attach the endpoints to the correct url
-# api.add_resource(GetNewswire, '/news')
-# api.add_resource(GetTop, '/top/<category>')
-# api.add_resource(GetFinData, '/date/<date>')
-
-# @app.errorhandler(500)
-# def internal_server_error(e):
-#     return e
-
 def populateNews():
     next_call = time.time()
     while True:
         getNews()
         next_call = next_call+30
         time.sleep(next_call - time.time())
-
-
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0')
 
 newsThread = threading.Thread(target=populateNews)
 newsThread.start()

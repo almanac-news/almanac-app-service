@@ -125,7 +125,7 @@ def populateNews():
     next_call = time.time()
     while True:
         getNews()
-        next_call = next_call+30
+        next_call = next_call+180
         time.sleep(next_call - time.time())
 
 newsThread = threading.Thread(target=populateNews)

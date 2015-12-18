@@ -6,13 +6,13 @@ import unittest
 class SimpleTest(unittest.TestCase):
 
     #basic setup
-    def setUp(self):
-        app.config['TESTING'] = True
-        self.app = app.test_client()
+    # def setUp(self):
+    #     app.config['TESTING'] = True
+    #     self.app = app.test_client()
 
     #test that hitting the '/news' api route returns a list structure
-    def test_news(self):
-        rv = self.app.get('/news')
+    # def test_news(self):
+    #     rv = self.app.get('/news')
         # assert "Did the redis thing" in rv.data
 
 
@@ -24,15 +24,15 @@ class SimpleTest(unittest.TestCase):
     #     self.assertIsInstance(resp, list)
 
     #test that hitting the '/date/<date>' route with a date returns a list structure
-    def test_date(self):
-        rv = self.app.get('/date/2015-12-08')
-        resp = json.loads(rv.data)
-
-        self.assertIsInstance(resp, list)
-
-    def test_landing(self):
-        rv = self.app.get('/')
-        assert "JOB SEARCH DIESEL!!!!!!!!!!" in rv.data
+    # def test_date(self):
+    #     rv = self.app.get('/date/2015-12-08')
+    #     resp = json.loads(rv.data)
+    #
+    #     self.assertIsInstance(resp, list)
+    #
+    # def test_landing(self):
+    #     rv = self.app.get('/')
+    #     assert "JOB SEARCH DIESEL!!!!!!!!!!" in rv.data
 
 if __name__ == '__main__':
     unittest.main()

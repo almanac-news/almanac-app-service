@@ -13,7 +13,7 @@ import time
 import threading
 
 #setup redis connection
-rs = redis.StrictRedis(host='localhost', port=6379, db=0)
+rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
 
 # setup connection to NYT and programmatically login with mechanize
 #mechanize setup for cookies and ignoring robots.txt
@@ -37,9 +37,6 @@ br.submit()
 def normalize(unicode):
     result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-').replace(' ', ' ')
     return result
-    # unicode.decode('utf-8', result).normalize('NFKD', result).encode('ascii','ignore')
-    # query = urllib.quote(unicode.encode('utf8', 'replace'))
-    # return urllib.unquote(query).decode('utf8')
 
 #Function to scrape article text, clean and format it, and store it into redis under a hashmap
 def extractArticles(obj):

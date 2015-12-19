@@ -10,10 +10,8 @@ import cookielib
 import mechanize
 from readability.readability import Document
 import time
+import datetime
 import threading
-
-#setup redis connection
-rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
 
 # setup connection to NYT and programmatically login with mechanize
 #mechanize setup for cookies and ignoring robots.txt
@@ -40,6 +38,8 @@ def normalize(unicode):
 
 #Function to scrape article text, clean and format it, and store it into redis under a hashmap
 def extractArticles(obj):
+    #setup redis connection
+    rs = redis.StrictRedis(host='localhost', port=6379, db=0)
     #format long-url in 'url' formatting
     url = urllib.quote(obj['url'], safe='')
     access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
@@ -69,20 +69,8 @@ def extractArticles(obj):
         rs.hmset(key, article)
         rs.expire(key, 3600)
 
-#Mapping function to pull out and compose the date and closing value for each day in the
-#list of results from Yahoo
-#obj represents stats from asset prices per one specific day
-def extractData(obj):
-    return {'date': obj["Date"], 'value': obj['Close']}
-
-#Map extractData onto the series of data retrieved from Yahoo for each news article's window of time
-#obj represents an article's dict as composed from extractArticles
-#CURRENTLY UNNECESSARY DUE TO 'date/<date>' ROUTE
-# def mapFinData(obj):
-#     finData = getFinData(obj["created_date"])
-#     #attach the data to a key on the obj
-#     obj["data"] = map(extractData, finData["query"]['results']['quote'])
-#     return obj
+# def delOldData():
+#     #worker running every 72 hours to delete the last
 
 #Pull articles from NYT Newswire API
 def getNews():
@@ -103,30 +91,39 @@ def getNews():
     #pull out relevant information only
     for obj in objectResp["results"]:
         extractArticles(obj)
-    # return 'Did the redis thing'
+    print 'did the news'
 
-#Query yahoo finance's historical data api for EU=X (USD to Euro exchange rate) starting
-#from (arbitrarily) 2015-11-23 and end date - whenever the article was published
-# def getFinData(date):
-#     urlFirst = "https://query.yahooapis.com/v1/public/yql?q=select%20*%20from%20yahoo.finance.historicaldata%20where%20symbol%20%3D%20%22EUR%3DX%22%20and%20startDate%20%3D%20%222015-11-23%22%20and%20endDate%20%3D%20%22"
-#     urlSecond = "%22&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
-#     r = requests.get(urlFirst + date + urlSecond)
-#     return r.json()
-
-#API endpoint: for a given date parameter, get a series of currency data from the date set in getFinData
-#up until that date
-# class GetFinData(Resource):
-#     def get(self, date):
-#         finData = getFinData(date)
-#         series = map(extractData, finData["query"]['results']['quote'])
-#         return series
+def getFinData():
+    #setup redis connection
+    rs = redis.StrictRedis(host='localhost', port=6379, db=1)
+    url = "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22USO%22%2C%0A%22IYZ%22%2C%0A%22EEM%22%2C%0A%22VPL%22%2C%0A%22XLE%22%2C%0A%22HEDJ%22%2C%0A%22XLF%22%2C%0A%22XLV%22%2C%0A%22EPI%22%2C%0A%22XLI%22%2C%0A%22EWJ%22%2C%0A%22ILF%22%2C%0A%22BLV%22%2C%0A%22UDN%22%2C%0A%22XLB%22%2C%0A%22IYR%22%2C%0A%22SCPB%22%2C%0A%22FXE%22%2C%0A%22IWM%22%2C%0A%22XLK%22%2C%0A%22XLU%22)&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
+    r = requests.get(url)
+    time = r.json()["query"]["created"]
+    obj = r.json()["query"]["results"]["quote"]
+    for datum in obj:
+        rs.hset(datum["symbol"], time, datum["LastTradePriceOnly"])
+    print 'stored the data'
 
 def populateNews():
     next_call = time.time()
     while True:
         getNews()
-        next_call = next_call+180
+        next_call = next_call+60
         time.sleep(next_call - time.time())
 
+def populateFinData():
+    next_call = time.time()
+    while True:
+        getFinData()
+        next_call = next_call+15
+        time.sleep(next_call - time.time())
+
+# def delOldData():
+#     next_call = time.time()
+#     while True:
+
+
 newsThread = threading.Thread(target=populateNews)
+dataThread = threading.Thread(target=populateFinData)
 newsThread.start()
+dataThread.start()

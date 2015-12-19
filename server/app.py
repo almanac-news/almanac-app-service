@@ -63,7 +63,7 @@ def extractArticles(obj):
 
         #grab story content tags and concat them together
         storycontent = (soup.find_all("p", { "class":"story-content" }))
-        encodedFinal = reduce(lambda x, y: x + '<br />' + y.text, storycontent, '')
+        encodedFinal = reduce(lambda x, y: x + '<p>' + y.text + '</p>', storycontent, '')
         article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
 
         rs.hmset(key, article)
@@ -131,11 +131,19 @@ def populateFinData():
         #wday = 6 is sunday, which in UTC is EST saturday, likewise for UST wday = 0
         #being EST Sunday
         #also check if time is between EST 9:30am and 4pm (14:30 and 21 UTC)
-        if  0 < now.tm_wday < 6 and 14.3 < hm < 21.0:
+        if  0 < now.tm_wday < 6 and 14.3 <= hm <= 21.0:
             time.sleep(next_call - time.time())
         else:
-            #sleep for 17.5 hours until the next day's market open
-            time.sleep(63000)
+            #sleep until the next market open
+            sleep()
+
+def sleep():
+    now = time.gmtime(time.time())
+    while now.tm_wday == 6 or now.tm_wday == 0 or 21 < hm or hm < 14.3 :
+        time.sleep(1)
+        now = time.gmtime(time.time())
+        hm = now.tm_hour + now.tm_min/100
+    populateFinData()
 
 def delWorker():
     next_call = time.time()

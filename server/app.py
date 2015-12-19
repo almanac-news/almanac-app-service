@@ -10,8 +10,8 @@ import cookielib
 import mechanize
 from readability.readability import Document
 import time
-import datetime
 import threading
+from __future__ import division
 
 # setup connection to NYT and programmatically login with mechanize
 #mechanize setup for cookies and ignoring robots.txt
@@ -69,8 +69,17 @@ def extractArticles(obj):
         rs.hmset(key, article)
         rs.expire(key, 3600)
 
-# def delOldData():
-#     #worker running every 72 hours to delete the last
+def delOldData():
+    #worker running every 72 hours to delete the last market period's data (390)
+    rs = redis.StrictRedis(host='localhost', port=6379, db=1)
+    keys = rs.keys('*')
+    #for each stock ticker
+    for key in keys:
+        values = rs.hkeys(key)
+        #390 minutes in 6.5 hours
+        toDelete = values[-4:]
+        # print toDelete
+        rs.hdel(key, *toDelete)
 
 #Pull articles from NYT Newswire API
 def getNews():
@@ -116,14 +125,30 @@ def populateFinData():
     while True:
         getFinData()
         next_call = next_call+15
+        now = time.gmtime(time.time())
+        #add min/100 to hour to make it easy to check if it's 9:30
+        hm = now.tm_hour + now.tm_min/100
+        #wday = 6 is sunday, which in UTC is EST saturday, likewise for UST wday = 0
+        #being EST Sunday
+        #also check if time is between EST 9:30am and 4pm (14:30 and 21 UTC)
+        if  0 < now.tm_wday < 6 and 14.3 < hm < 21.0:
+            time.sleep(next_call - time.time())
+        else:
+            #sleep for 17.5 hours until the next day's market open
+            time.sleep(63000)
+
+def delWorker():
+    next_call = time.time()
+    while True:
+        delOldData()
+        next_call = next_call+60
         time.sleep(next_call - time.time())
 
-# def delOldData():
-#     next_call = time.time()
-#     while True:
-
-
-newsThread = threading.Thread(target=populateNews)
+# newsThread = threading.Thread(target=populateNews)
 dataThread = threading.Thread(target=populateFinData)
-newsThread.start()
+# newsThread.start()
 dataThread.start()
+
+delWorkerThread = threading.Thread(target=delWorker)
+time.sleep(60)
+delWorkerThread.start()

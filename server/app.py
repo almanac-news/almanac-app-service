@@ -63,7 +63,7 @@ def extractArticles(obj):
 
         #grab story content tags and concat them together
         storycontent = (soup.find_all("p", { "class":"story-content" }))
-        encodedFinal = reduce(lambda x, y: x + '***' + y.text, storycontent, '')
+        encodedFinal = reduce(lambda x, y: x + '<br />' + y.text, storycontent, '')
         article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
 
         rs.hmset(key, article)

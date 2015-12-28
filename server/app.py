@@ -1,4 +1,5 @@
  # coding=UTF-8
+from __future__ import division
 import requests
 import unicodedata
 import urllib
@@ -11,7 +12,6 @@ import mechanize
 from readability.readability import Document
 import time
 import threading
-from __future__ import division
 
 # setup connection to NYT and programmatically login with mechanize
 #mechanize setup for cookies and ignoring robots.txt
@@ -39,7 +39,7 @@ def normalize(unicode):
 #Function to scrape article text, clean and format it, and store it into redis under a hashmap
 def extractArticles(obj):
     #setup redis connection
-    rs = redis.StrictRedis(host='localhost', port=6379, db=0)
+    rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
     #format long-url in 'url' formatting
     url = urllib.quote(obj['url'], safe='')
     access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
@@ -70,14 +70,14 @@ def extractArticles(obj):
         rs.expire(key, 3600)
 
 def delOldData():
-    #worker running every 72 hours to delete the last market period's data (390)
-    rs = redis.StrictRedis(host='localhost', port=6379, db=1)
+    #worker running every 72 hours to delete the last market period's data (390 points)
+    rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
     keys = rs.keys('*')
     #for each stock ticker
     for key in keys:
         values = rs.hkeys(key)
         #390 minutes in 6.5 hours
-        toDelete = values[-4:]
+        toDelete = values[-390:]
         # print toDelete
         rs.hdel(key, *toDelete)
 
@@ -104,7 +104,7 @@ def getNews():
 
 def getFinData():
     #setup redis connection
-    rs = redis.StrictRedis(host='localhost', port=6379, db=1)
+    rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
     url = "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22USO%22%2C%0A%22IYZ%22%2C%0A%22EEM%22%2C%0A%22VPL%22%2C%0A%22XLE%22%2C%0A%22HEDJ%22%2C%0A%22XLF%22%2C%0A%22XLV%22%2C%0A%22EPI%22%2C%0A%22XLI%22%2C%0A%22EWJ%22%2C%0A%22ILF%22%2C%0A%22BLV%22%2C%0A%22UDN%22%2C%0A%22XLB%22%2C%0A%22IYR%22%2C%0A%22SCPB%22%2C%0A%22FXE%22%2C%0A%22IWM%22%2C%0A%22XLK%22%2C%0A%22XLU%22)&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
     r = requests.get(url)
     time = r.json()["query"]["created"]
@@ -124,6 +124,7 @@ def populateFinData():
     next_call = time.time()
     while True:
         getFinData()
+        #pull data every 15 seconds to make testing easier (eventually 1 min)
         next_call = next_call+15
         now = time.gmtime(time.time())
         #add min/100 to hour to make it easy to check if it's 9:30
@@ -131,7 +132,7 @@ def populateFinData():
         #wday = 6 is sunday, which in UTC is EST saturday, likewise for UST wday = 0
         #being EST Sunday
         #also check if time is between EST 9:30am and 4pm (14:30 and 21 UTC)
-        if  0 < now.tm_wday < 6 and 14.3 <= hm <= 21.0:
+        if  0 <= now.tm_wday < 5 and 14.3 <= hm <= 21.0:
             time.sleep(next_call - time.time())
         else:
             #sleep until the next market open
@@ -139,7 +140,8 @@ def populateFinData():
 
 def sleep():
     now = time.gmtime(time.time())
-    while now.tm_wday == 6 or now.tm_wday == 0 or 21 < hm or hm < 14.3 :
+    #it's a weekend or it's outside trading hours, so sleep and keep checking
+    while now.tm_wday > 4 or 21 < hm or hm < 14.3:
         time.sleep(1)
         now = time.gmtime(time.time())
         hm = now.tm_hour + now.tm_min/100
@@ -149,14 +151,14 @@ def delWorker():
     next_call = time.time()
     while True:
         delOldData()
-        next_call = next_call+60
+        #wait 1 hour
+        next_call = next_call+3600
         time.sleep(next_call - time.time())
 
-# newsThread = threading.Thread(target=populateNews)
+newsThread = threading.Thread(target=populateNews)
 dataThread = threading.Thread(target=populateFinData)
-# newsThread.start()
+newsThread.start()
 dataThread.start()
 
 delWorkerThread = threading.Thread(target=delWorker)
-time.sleep(60)
 delWorkerThread.start()

@@ -98,7 +98,7 @@ def delOldData():
 #Pull articles from NYT Newswire API
 def getNews():
     h = HTMLParser.HTMLParser()
-    uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
+    uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=5&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
     try:
         rq = requests.get(uri)
     except requests.exceptions.Timeout:
@@ -172,12 +172,19 @@ def delWorker():
         next_call = next_call+3600
         time.sleep(next_call - time.time())
 
-p = HTMLParser.HTMLParser()
-resp = requests.get("http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=100&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181")
-objectResp = json.loads(p.unescape(resp.text))
-#pull out relevant information only
-for obj in objectResp["results"]:
-    extractArticles(obj)
+def initNews():
+    h = HTMLParser.HTMLParser()
+    offset = 0
+    while offset <= 60:
+        r = requests.get("http://api.nytimes.com/svc/news/v3/content/all/all/24?offset=" + str(offset) + "&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181")
+        objectResp = json.loads(h.unescape(r.text))
+        #pull out relevant information only
+        for obj in objectResp["results"]:
+            extractArticles(obj)
+        offset += 20
+
+#initially populate news cache from the past 60 newswire articles
+initNews()
 
 newsThread = threading.Thread(target=populateNews)
 dataThread = threading.Thread(target=populateFinData)

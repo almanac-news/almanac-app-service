@@ -70,14 +70,15 @@ def extractArticles(obj):
         rs.expire(key, 3600)
 
 def delOldData():
-    #worker running every 72 hours to delete the last market period's data (390 points)
+    #worker running every 72 hours to delete the last market period's data (390 records)
+    #(currently every 1 hr and deleting 120 records for testing)
     rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
     keys = rs.keys('*')
     #for each stock ticker
     for key in keys:
         values = rs.hkeys(key)
         #390 minutes in 6.5 hours
-        toDelete = values[-390:]
+        toDelete = values[-120:]
         # print toDelete
         rs.hdel(key, *toDelete)
 

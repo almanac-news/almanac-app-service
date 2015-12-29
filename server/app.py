@@ -12,6 +12,16 @@ import mechanize
 from readability.readability import Document
 import time
 import threading
+import rethinkdb as r
+
+
+#setup rethinkdb
+conn = r.connect(host="rt-database", port=28015)
+if 'news' not in r.db('test').table_list().run(conn):
+    r.db('test').table_create('news').run(conn)
+if 'finance' not in r.db('test').table_list().run(conn):
+    r.db('test').table_create('finance').run(conn)
+
 
 # setup connection to NYT and programmatically login with mechanize
 #mechanize setup for cookies and ignoring robots.txt
@@ -45,9 +55,9 @@ def extractArticles(obj):
     access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
     #query bitly with long-url to get shortened version
     bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
-    r = requests.get(bitly_uri)
+    rq = requests.get(bitly_uri)
 
-    key = r.text[-8:-1]
+    key = rq.text[-8:-1]
 
     #if article is not already in redis db
     if (rs.exists(key) == 0):
@@ -64,10 +74,12 @@ def extractArticles(obj):
         #grab story content tags and concat them together
         storycontent = (soup.find_all("p", { "class":"story-content" }))
         encodedFinal = reduce(lambda x, y: x + '<p>' + y.text + '</p>', storycontent, '')
-        article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': r.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
+        article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': rq.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
 
         rs.hmset(key, article)
         rs.expire(key, 3600)
+	r.db('test').table('news').wait()
+	r.db('test').table('news').insert({'id': key, 'article': article}).run(conn)
 
 def delOldData():
     #worker running every 72 hours to delete the last market period's data (390 records)
@@ -79,7 +91,7 @@ def delOldData():
         values = rs.hkeys(key)
         #390 minutes in 6.5 hours
         toDelete = values[-120:]
-        # print toDelete
+	# print toDelete
         rs.hdel(key, *toDelete)
 
 #Pull articles from NYT Newswire API
@@ -87,7 +99,7 @@ def getNews():
     h = HTMLParser.HTMLParser()
     uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
     try:
-        r = requests.get(uri)
+        rq = requests.get(uri)
     except requests.exceptions.Timeout:
         return "API request timeout"
     except requests.exceptions.RequestException as e:
@@ -95,9 +107,9 @@ def getNews():
 
     #raises stored HTTP error if one occured
     #hard to say if this works
-    r.raise_for_status()
+    rq.raise_for_status()
 
-    objectResp = json.loads(h.unescape(r.text))
+    objectResp = json.loads(h.unescape(rq.text))
     #pull out relevant information only
     for obj in objectResp["results"]:
         extractArticles(obj)
@@ -107,11 +119,13 @@ def getFinData():
     #setup redis connection
     rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
     url = "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22USO%22%2C%0A%22IYZ%22%2C%0A%22EEM%22%2C%0A%22VPL%22%2C%0A%22XLE%22%2C%0A%22HEDJ%22%2C%0A%22XLF%22%2C%0A%22XLV%22%2C%0A%22EPI%22%2C%0A%22XLI%22%2C%0A%22EWJ%22%2C%0A%22ILF%22%2C%0A%22BLV%22%2C%0A%22UDN%22%2C%0A%22XLB%22%2C%0A%22IYR%22%2C%0A%22SCPB%22%2C%0A%22FXE%22%2C%0A%22IWM%22%2C%0A%22XLK%22%2C%0A%22XLU%22)&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
-    r = requests.get(url)
-    time = r.json()["query"]["created"]
-    obj = r.json()["query"]["results"]["quote"]
+    rq = requests.get(url)
+    time = rq.json()["query"]["created"]
+    obj = rq.json()["query"]["results"]["quote"]
     for datum in obj:
         rs.hset(datum["symbol"], time, datum["LastTradePriceOnly"])
+	r.db('test').table('finance').wait()
+	r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': time, 'price': datum["LastTradePriceOnly"]}).run(conn)
     print 'stored the data'
 
 def populateNews():
@@ -141,6 +155,7 @@ def populateFinData():
 
 def sleep():
     now = time.gmtime(time.time())
+    hm = now.tm_hour + now.tm_min/100
     #it's a weekend or it's outside trading hours, so sleep and keep checking
     while now.tm_wday > 4 or 21 < hm or hm < 14.3:
         time.sleep(1)

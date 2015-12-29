@@ -51,7 +51,7 @@ def extractArticles(obj):
     categories = ['World', 'U.S.', 'Politics', 'Business Day', 'Technology', 'Science', 'Health', 'Real Estate']
     if obj["section"] in categories:
         #setup redis connection
-        rs = redis.StrictRedis(host='localhost', port=6379, db=0)
+        rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
         #format long-url in 'url' formatting
         url = urllib.quote(obj['url'], safe='')
         access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
@@ -85,7 +85,7 @@ def extractArticles(obj):
 def delOldData():
     #worker running every 72 hours to delete the last market period's data (390 records)
     #(currently every 1 hr and deleting 120 records for testing)
-    rs = redis.StrictRedis(host='localhost', port=6379, db=1)
+    rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
     keys = rs.keys('*')
     #for each stock ticker
     for key in keys:
@@ -118,7 +118,7 @@ def getNews():
 
 def getFinData():
     #setup redis connection
-    rs = redis.StrictRedis(host='localhost', port=6379, db=1)
+    rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
     url = "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22USO%22%2C%0A%22IYZ%22%2C%0A%22EEM%22%2C%0A%22VPL%22%2C%0A%22XLE%22%2C%0A%22HEDJ%22%2C%0A%22XLF%22%2C%0A%22XLV%22%2C%0A%22EPI%22%2C%0A%22XLI%22%2C%0A%22EWJ%22%2C%0A%22ILF%22%2C%0A%22BLV%22%2C%0A%22UDN%22%2C%0A%22XLB%22%2C%0A%22IYR%22%2C%0A%22SCPB%22%2C%0A%22FXE%22%2C%0A%22IWM%22%2C%0A%22XLK%22%2C%0A%22XLU%22)&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
     rq = requests.get(url)
     time = rq.json()["query"]["created"]
@@ -145,8 +145,6 @@ def populateFinData():
         now = time.gmtime(time.time())
         #add min/100 to hour to make it easy to check if it's 9:30
         hm = now.tm_hour + now.tm_min/100
-        #wday = 6 is sunday, which in UTC is EST saturday, likewise for UST wday = 0
-        #being EST Sunday
         #also check if time is between EST 9:30am and 4pm (14:30 and 21 UTC)
         if  0 <= now.tm_wday < 5 and 14.3 <= hm <= 21.0:
             time.sleep(next_call - time.time())
@@ -175,13 +173,13 @@ def delWorker():
 def initNews():
     h = HTMLParser.HTMLParser()
     offset = 0
-    while offset <= 60:
+    while offset <= 45:
         r = requests.get("http://api.nytimes.com/svc/news/v3/content/all/all/24?offset=" + str(offset) + "&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181")
         objectResp = json.loads(h.unescape(r.text))
         #pull out relevant information only
         for obj in objectResp["results"]:
             extractArticles(obj)
-        offset += 20
+        offset += 15
 
 #initially populate news cache from the past 60 newswire articles
 initNews()

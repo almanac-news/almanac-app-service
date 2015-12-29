@@ -13,7 +13,7 @@ from readability.readability import Document
 import time
 import threading
 import rethinkdb as r
-
+import re
 
 #setup rethinkdb
 conn = r.connect(host="rt-database", port=28015)
@@ -48,38 +48,40 @@ def normalize(unicode):
 
 #Function to scrape article text, clean and format it, and store it into redis under a hashmap
 def extractArticles(obj):
-    #setup redis connection
-    rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
-    #format long-url in 'url' formatting
-    url = urllib.quote(obj['url'], safe='')
-    access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
-    #query bitly with long-url to get shortened version
-    bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
-    rq = requests.get(bitly_uri)
+    categories = ['World', 'U.S.', 'Politics', 'Business Day', 'Technology', 'Science', 'Health', 'Real Estate']
+    if obj["section"] in categories:
+        #setup redis connection
+        rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
+        #format long-url in 'url' formatting
+        url = urllib.quote(obj['url'], safe='')
+        access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
+        #query bitly with long-url to get shortened version
+        bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
+        rq = requests.get(bitly_uri)
 
-    key = rq.text[-8:-1]
+        key = rq.text[-8:-1]
 
-    #if article is not already in redis db
-    if (rs.exists(key) == 0):
-        #scrape the news article
-        html = br.open(obj['url']).read()
+        #if article is not already in redis db
+        if (rs.exists(key) == 0):
+            #scrape the news article
+            html = br.open(obj['url']).read()
 
-        #run the article through readability
-        readable_article = Document(html).summary()
-        readable_title = Document(html).title()
+            #run the article through readability
+            readable_article = Document(html).summary()
+            readable_title = Document(html).title()
 
-        #run it through BeautifulSoup to parse only relevant tags
-        soup = BeautifulSoup(readable_article, 'lxml')
+            #run it through BeautifulSoup to parse only relevant tags
+            soup = BeautifulSoup(readable_article, 'lxml')
+            #grab story content tags and concat them together
+            storycontent = (soup.find_all("p", { "class" : re.compile(r"^(story-content|articleBody)$")}))
+            if (len(storycontent) > 1):
+                encodedFinal = reduce(lambda x, y: x + '<p>' + y.text + '</p>', storycontent, '')
+                article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': rq.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
 
-        #grab story content tags and concat them together
-        storycontent = (soup.find_all("p", { "class":"story-content" }))
-        encodedFinal = reduce(lambda x, y: x + '<p>' + y.text + '</p>', storycontent, '')
-        article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': rq.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
-
-        rs.hmset(key, article)
-        rs.expire(key, 3600)
-	r.db('test').table('news').wait()
-	r.db('test').table('news').insert({'id': key, 'article': article}).run(conn)
+                rs.hmset(key, article)
+                rs.expire(key, 3600)
+                r.db('test').table('news').wait()
+                r.db('test').table('news').insert({'id': key, 'article': article}).run(conn)
 
 def delOldData():
     #worker running every 72 hours to delete the last market period's data (390 records)
@@ -97,7 +99,7 @@ def delOldData():
 #Pull articles from NYT Newswire API
 def getNews():
     h = HTMLParser.HTMLParser()
-    uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=10&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
+    uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=5&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
     try:
         rq = requests.get(uri)
     except requests.exceptions.Timeout:
@@ -124,15 +126,15 @@ def getFinData():
     obj = rq.json()["query"]["results"]["quote"]
     for datum in obj:
         rs.hset(datum["symbol"], time, datum["LastTradePriceOnly"])
-	r.db('test').table('finance').wait()
-	r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': time, 'price': datum["LastTradePriceOnly"]}).run(conn)
+        r.db('test').table('finance').wait()
+        r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': time, 'price': datum["LastTradePriceOnly"]}).run(conn)
     print 'stored the data'
 
 def populateNews():
     next_call = time.time()
     while True:
         getNews()
-        next_call = next_call+60
+        next_call = next_call+120
         time.sleep(next_call - time.time())
 
 def populateFinData():
@@ -144,8 +146,6 @@ def populateFinData():
         now = time.gmtime(time.time())
         #add min/100 to hour to make it easy to check if it's 9:30
         hm = now.tm_hour + now.tm_min/100
-        #wday = 6 is sunday, which in UTC is EST saturday, likewise for UST wday = 0
-        #being EST Sunday
         #also check if time is between EST 9:30am and 4pm (14:30 and 21 UTC)
         if  0 <= now.tm_wday < 5 and 14.3 <= hm <= 21.0:
             time.sleep(next_call - time.time())
@@ -170,6 +170,20 @@ def delWorker():
         #wait 1 hour
         next_call = next_call+3600
         time.sleep(next_call - time.time())
+
+def initNews():
+    h = HTMLParser.HTMLParser()
+    offset = 0
+    while offset <= 45:
+        r = requests.get("http://api.nytimes.com/svc/news/v3/content/all/all/24?offset=" + str(offset) + "&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181")
+        objectResp = json.loads(h.unescape(r.text))
+        #pull out relevant information only
+        for obj in objectResp["results"]:
+            extractArticles(obj)
+        offset += 15
+
+#initially populate news cache from the past 60 newswire articles
+#initNews()
 
 newsThread = threading.Thread(target=populateNews)
 dataThread = threading.Thread(target=populateFinData)

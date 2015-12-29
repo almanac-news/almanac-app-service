@@ -1,5 +1,6 @@
  # coding=UTF-8
 from __future__ import division
+import os
 import requests
 import unicodedata
 import urllib
@@ -37,8 +38,8 @@ url = 'https://myaccount.nytimes.com/auth/login'
 br.open(url)
 #select login form and login with user credentials
 br.select_form(nr=0)
-br.form['userid'] = 'natejlevine@gmail.com'
-br.form['password'] = 'monkeybisness'
+br.form['userid'] = os.environ['USERID'] 
+br.form['password'] = os.environ['PASSWORD']
 br.submit()
 
 #Format unicode we get back from NYT properly, replacing unprintable characters
@@ -54,7 +55,7 @@ def extractArticles(obj):
         rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
         #format long-url in 'url' formatting
         url = urllib.quote(obj['url'], safe='')
-        access_token = 'ab6dbf0df548c91cffaa1ae82e0d9f4a52dfe4f8'
+        access_token = os.environ['BITLY_TOKEN'] 
         #query bitly with long-url to get shortened version
         bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
         rq = requests.get(bitly_uri)
@@ -99,7 +100,8 @@ def delOldData():
 #Pull articles from NYT Newswire API
 def getNews():
     h = HTMLParser.HTMLParser()
-    uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=5&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181"
+    nyt_key = os.environ['NYT_KEY']
+    uri = "http://api.nytimes.com/svc/news/v3/content/all/all/24?limit=5&api-key=" + nyt_key
     try:
         rq = requests.get(uri)
     except requests.exceptions.Timeout:
@@ -176,7 +178,8 @@ def initNews():
     offset = 0
     #change back to 45 for production
     while offset <= 10:
-        r = requests.get("http://api.nytimes.com/svc/news/v3/content/all/all/24?offset=" + str(offset) + "&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181")
+        nyt_key = os.environ['NYT_KEY']
+        r = requests.get("http://api.nytimes.com/svc/news/v3/content/all/all/24?offset=" + str(offset) + "&api-key=" + nyt_key)
         objectResp = json.loads(h.unescape(r.text))
         #pull out relevant information only
         for obj in objectResp["results"]:

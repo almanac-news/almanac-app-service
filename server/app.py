@@ -174,13 +174,15 @@ def delWorker():
 def initNews():
     h = HTMLParser.HTMLParser()
     offset = 0
-    while offset <= 45:
+    #change back to 45 for production
+    while offset <= 10:
         r = requests.get("http://api.nytimes.com/svc/news/v3/content/all/all/24?offset=" + str(offset) + "&api-key=202f0d73b368cec23b977f5a141728ce:17:73664181")
         objectResp = json.loads(h.unescape(r.text))
         #pull out relevant information only
         for obj in objectResp["results"]:
             extractArticles(obj)
-        offset += 15
+        #change back to 15 for production
+        offset += 10
 
 #initially populate news cache from the past 60 newswire articles
 #initNews()

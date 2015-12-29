@@ -183,7 +183,7 @@ def initNews():
         offset += 15
 
 #initially populate news cache from the past 60 newswire articles
-initNews()
+#initNews()
 
 newsThread = threading.Thread(target=populateNews)
 dataThread = threading.Thread(target=populateFinData)

@@ -13,7 +13,7 @@ from readability.readability import Document
 import time
 import threading
 import rethinkdb as r
-
+import re
 
 #setup rethinkdb
 conn = r.connect(host="rt-database", port=28015)
@@ -73,14 +73,15 @@ def extractArticles(obj):
             #run it through BeautifulSoup to parse only relevant tags
             soup = BeautifulSoup(readable_article, 'lxml')
             #grab story content tags and concat them together
-            storycontent = (soup.find_all("p", { "class":"story-content" }))
-            encodedFinal = reduce(lambda x, y: x + '<p>' + y.text + '</p>', storycontent, '')
-            article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': rq.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
+            storycontent = (soup.find_all("p", { "class" : re.compile(r"^(story-content|articleBody)$")}))
+            if (len(storycontent) > 1):
+                encodedFinal = reduce(lambda x, y: x + '<p>' + y.text + '</p>', storycontent, '')
+                article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': rq.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
 
-            rs.hmset(key, article)
-            rs.expire(key, 3600)
-        r.db('test').table('news').wait()
-    	r.db('test').table('news').insert({'id': key, 'article': article}).run(conn)
+                rs.hmset(key, article)
+                rs.expire(key, 3600)
+                r.db('test').table('news').wait()
+                r.db('test').table('news').insert({'id': key, 'article': article}).run(conn)
 
 def delOldData():
     #worker running every 72 hours to delete the last market period's data (390 records)
@@ -125,8 +126,8 @@ def getFinData():
     obj = rq.json()["query"]["results"]["quote"]
     for datum in obj:
         rs.hset(datum["symbol"], time, datum["LastTradePriceOnly"])
-	r.db('test').table('finance').wait()
-	r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': time, 'price': datum["LastTradePriceOnly"]}).run(conn)
+        r.db('test').table('finance').wait()
+        r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': time, 'price': datum["LastTradePriceOnly"]}).run(conn)
     print 'stored the data'
 
 def populateNews():

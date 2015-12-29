@@ -1,5 +1,6 @@
 aniso8601==1.1.0
 beautifulsoup4==4.4.1
+chardet==2.3.0
 coverage==3.7.1
 cssselect==0.9.1
 HTMLParser==0.0.2
@@ -16,7 +17,9 @@ PyYAML==3.11
 readability-lxml==0.6.1
 redis==2.10.5
 requests==2.8.1
+rethinkdb==2.2.0.post2
 sh==1.11
 six==1.10.0
+virtualenv==13.1.2
 Werkzeug==0.11.2
 wheel==0.24.0

@@ -20,6 +20,7 @@ import re
 conn = r.connect(host="rt-database", port=28015)
 if 'news' not in r.db('test').table_list().run(conn):
     r.db('test').table_create('news').run(conn)
+    r.db('test').table('news').index_create('created_date').run(conn)
 if 'finance' not in r.db('test').table_list().run(conn):
     r.db('test').table_create('finance').run(conn)
     r.db('test').table('finance').index_create('time').run(conn)
@@ -102,7 +103,7 @@ def extractArticles(obj):
                 rs.hmset(key, article)
                 rs.expire(key, 3600)
                 r.db('test').table('news').wait()
-                r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection'], 'likes': 0}).run(conn)
+                r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection'], 'likes': 0, 'created_date': obj['created_date']}).run(conn)
 
 #Pull articles from NYT Newswire API
 def getNews():

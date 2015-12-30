@@ -104,19 +104,6 @@ def extractArticles(obj):
                 r.db('test').table('news').wait()
                 r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection'], 'likes': 0}).run(conn)
 
-def delOldData():
-    #worker running every 72 hours to delete the last market period's data (390 records)
-    #(currently every 1 hr and deleting 120 records for testing)
-    rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
-    keys = rs.keys('*')
-    #for each stock ticker
-    for key in keys:
-        values = rs.hkeys(key)
-        #390 minutes in 6.5 hours
-        toDelete = values[-120:]
-	# print toDelete
-        rs.hdel(key, *toDelete)
-
 #Pull articles from NYT Newswire API
 def getNews():
     h = HTMLParser.HTMLParser()
@@ -137,20 +124,29 @@ def getNews():
     #pull out relevant information only
     for obj in objectResp["results"]:
         extractArticles(obj)
-    print 'did the news'
+    gmt = time.gmtime(time.time())
+    now = str(gmt.tm_year) + '-' + str(gmt.tm_mon) + '-' + str(gmt.tm_mday) + 'T' + str(gmt.tm_hour) + ':' + str(gmt.tm_min) + ':' + str(gmt.tm_sec)
+    print 'did the news: ' + now
 
 def getFinData():
-    #setup redis connection
-    rs = redis.StrictRedis(host='data-cache', port=6379, db=1)
-    url = "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22USO%22%2C%0A%22IYZ%22%2C%0A%22EEM%22%2C%0A%22VPL%22%2C%0A%22XLE%22%2C%0A%22HEDJ%22%2C%0A%22XLF%22%2C%0A%22XLV%22%2C%0A%22EPI%22%2C%0A%22XLI%22%2C%0A%22EWJ%22%2C%0A%22ILF%22%2C%0A%22BLV%22%2C%0A%22UDN%22%2C%0A%22XLB%22%2C%0A%22IYR%22%2C%0A%22SCPB%22%2C%0A%22FXE%22%2C%0A%22IWM%22%2C%0A%22XLK%22%2C%0A%22XLU%22)&format=json&diagnostics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
+    url = (
+        "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20"
+        "from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22"
+        "USO%22%2C%0A%22IYZ%22%2C%0A%22EEM%22%2C%0A%22VPL%22%2C%0A%22XLE%22%2C%0A%22HEDJ%22%2C%"
+        "0A%22XLF%22%2C%0A%22XLV%22%2C%0A%22EPI%22%2C%0A%22XLI%22%2C%0A%22EWJ%22%2C%0A%22ILF%22"
+        "%2C%0A%22BLV%22%2C%0A%22UDN%22%2C%0A%22XLB%22%2C%0A%22IYR%22%2C%0A%22SCPB%22%2C%0A%22F"
+        "XE%22%2C%0A%22IWM%22%2C%0A%22XLK%22%2C%0A%22XLU%22)&format=json&diagnostics=true&env=s"
+        "tore%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
+    )
     rq = requests.get(url)
-    time = rq.json()["query"]["created"]
+    date = rq.json()["query"]["created"]
     obj = rq.json()["query"]["results"]["quote"]
     for datum in obj:
-        rs.hset(datum["symbol"], time, datum["LastTradePriceOnly"])
         r.db('test').table('finance').wait()
-        r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': time, 'price': datum["LastTradePriceOnly"]}).run(conn)
-    print 'stored the data'
+        r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': date, 'price': datum["LastTradePriceOnly"]}).run(conn)
+    gmt = time.gmtime(time.time())
+    now = str(gmt.tm_year) + '-' + str(gmt.tm_mon) + '-' + str(gmt.tm_mday) + 'T' + str(gmt.tm_hour) + ':' + str(gmt.tm_min) + ':' + str(gmt.tm_sec)
+    print 'stored the data: ' + now
 
 def populateNews():
     next_call = time.time()
@@ -165,32 +161,6 @@ def populateFinData():
         getFinData()
         #pull data every 15 seconds to make testing easier (eventually 1 min)
         next_call = next_call+15
-        now = time.gmtime(time.time())
-        #add min/100 to hour to make it easy to check if it's 9:30
-        hm = now.tm_hour + now.tm_min/100
-        #also check if time is between EST 9:30am and 4pm (14:30 and 21 UTC)
-        if  0 <= now.tm_wday < 5 and 14.3 <= hm <= 21.0:
-            time.sleep(next_call - time.time())
-        else:
-            #sleep until the next market open
-            sleep()
-
-def sleep():
-    now = time.gmtime(time.time())
-    hm = now.tm_hour + now.tm_min/100
-    #it's a weekend or it's outside trading hours, so sleep and keep checking
-    while now.tm_wday > 4 or 21 < hm or hm < 14.3:
-        time.sleep(1)
-        now = time.gmtime(time.time())
-        hm = now.tm_hour + now.tm_min/100
-    populateFinData()
-
-def delWorker():
-    next_call = time.time()
-    while True:
-        delOldData()
-        #wait 1 hour
-        next_call = next_call+3600
         time.sleep(next_call - time.time())
 
 def initNews():
@@ -210,10 +180,35 @@ def initNews():
 #initially populate news cache from the past 60 newswire articles
 initNews()
 
-newsThread = threading.Thread(target=populateNews)
-dataThread = threading.Thread(target=populateFinData)
+newsThread = threading.Thread(target=populateNews, name='newsThread')
+dataThread = threading.Thread(target=populateFinData, name='dataThread')
 newsThread.start()
 dataThread.start()
+threads = [newsThread, dataThread]
 
-delWorkerThread = threading.Thread(target=delWorker)
-delWorkerThread.start()
+next_c = time.time()
+while True:
+    for thread in threads:
+        if thread.is_alive() != True:
+            print 'dead: ' + thread.name
+            if thread.name == 'newsThread':
+                #re-login to NYT with mechanize
+                br.open('https://myaccount.nytimes.com/auth/login')
+                br.select_form(nr=0)
+                br.form['userid'] = os.environ['USERID']
+                br.form['password'] = os.environ['PASSWORD']
+                br.submit()
+                #remove old thread before starting a new one with the same name
+                threads.remove(thread)
+                newsThread = threading.Thread(target=populateNews, name='newsThread')
+                newsThread.start()
+                print 're-started newsThread'
+                threads.append(newsThread)
+            elif thread.name == 'dataThread':
+                threads.remove(thread)
+                dataThread = threading.Thread(target=populateFinData, name='dataThread')
+                dataThread.start()
+                print 're-started dataThread'
+                threads.append(dataThread)
+    next_c = next_c+5
+    time.sleep(next_c - time.time())

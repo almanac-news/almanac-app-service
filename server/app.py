@@ -102,7 +102,7 @@ def extractArticles(obj):
                 rs.hmset(key, article)
                 rs.expire(key, 3600)
                 r.db('test').table('news').wait()
-                r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection']}).run(conn)
+                r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection'], 'likes': 0}).run(conn)
 
 def delOldData():
     #worker running every 72 hours to delete the last market period's data (390 records)

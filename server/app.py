@@ -38,24 +38,33 @@ url = 'https://myaccount.nytimes.com/auth/login'
 br.open(url)
 #select login form and login with user credentials
 br.select_form(nr=0)
-br.form['userid'] = os.environ['USERID'] 
+br.form['userid'] = os.environ['USERID']
 br.form['password'] = os.environ['PASSWORD']
 br.submit()
 
 #Format unicode we get back from NYT properly, replacing unprintable characters
 def normalize(unicode):
-    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-').replace(' ', ' ')
+    result = (unicode.encode('utf-8')).replace('“','"').replace('”','"').replace("’","'").replace("‘","'").replace('—','-')
     return result
 
 #Function to scrape article text, clean and format it, and store it into redis under a hashmap
 def extractArticles(obj):
-    categories = ['World', 'U.S.', 'Politics', 'Business Day', 'Technology', 'Science', 'Health', 'Real Estate']
+    categories = [
+        'World',
+        'U.S.',
+        'Politics',
+        'Business Day',
+        'Technology',
+        'Science',
+        'Health',
+        'Real Estate'
+    ]
     if obj["section"] in categories:
         #setup redis connection
         rs = redis.StrictRedis(host='data-cache', port=6379, db=0)
         #format long-url in 'url' formatting
         url = urllib.quote(obj['url'], safe='')
-        access_token = os.environ['BITLY_TOKEN'] 
+        access_token = os.environ['BITLY_TOKEN']
         #query bitly with long-url to get shortened version
         bitly_uri = 'https://api-ssl.bitly.com//v3/shorten?access_token=' + access_token + '&longUrl=' + url + '&format=txt'
         rq = requests.get(bitly_uri)
@@ -77,7 +86,15 @@ def extractArticles(obj):
             storycontent = (soup.find_all("p", { "class" : re.compile(r"^(story-content|articleBody)$")}))
             if (len(storycontent) > 1):
                 encodedFinal = reduce(lambda x, y: x + '<p>' + y.text + '</p>', storycontent, '')
-                article = {'title': normalize(obj['title']), 'abstract': normalize(obj['abstract']), 'url': rq.text[0:-1], 'created_date': obj['created_date'][0:10], 'article_text': encodedFinal}
+                article = {
+                    'title': normalize(obj['title']),
+                    'abstract': normalize(obj['abstract']),
+                    'url': rq.text[0:-1],
+                    'created_date': obj['created_date'],
+                    'article_text': encodedFinal,
+                    'section': obj['section'],
+                    'subsection': obj['subsection']
+                }
 
                 rs.hmset(key, article)
                 rs.expire(key, 3600)

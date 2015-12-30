@@ -129,7 +129,6 @@ def getNews():
     print 'did the news: ' + now
 
 def getFinData():
-    #setup redis connection
     url = (
         "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20"
         "from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22"
@@ -185,3 +184,17 @@ newsThread = threading.Thread(target=populateNews)
 dataThread = threading.Thread(target=populateFinData)
 newsThread.start()
 dataThread.start()
+
+next_c = time.time()
+while True:
+    for thread in threading.enumerate():
+        if thread.is_alive() != True:
+            if thread.name == 'Thread-1':
+                #re-login to NYT with mechanize
+                newsThread = threading.Thread(target=populateNews)
+                newsThread.start()
+            elif thread.name == 'Thread-2':
+                dataThread = threading.Thread(target=populateFinData)
+                dataThread.start()
+    next_c = next_c+5
+    time.sleep(next_c - time.time())

@@ -22,6 +22,9 @@ if 'news' not in r.db('test').table_list().run(conn):
     r.db('test').table_create('news').run(conn)
 if 'finance' not in r.db('test').table_list().run(conn):
     r.db('test').table_create('finance').run(conn)
+    r.db('test').table('finance').index_create('time').run(conn)
+if 'subscriptions' not in r.db('test').table_list().run(conn):
+    r.db('test').table_create('subscriptions').run(conn)
 
 
 # setup connection to NYT and programmatically login with mechanize
@@ -99,7 +102,7 @@ def extractArticles(obj):
                 rs.hmset(key, article)
                 rs.expire(key, 3600)
                 r.db('test').table('news').wait()
-                r.db('test').table('news').insert({'id': key, 'article': article}).run(conn)
+                r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection']}).run(conn)
 
 def delOldData():
     #worker running every 72 hours to delete the last market period's data (390 records)

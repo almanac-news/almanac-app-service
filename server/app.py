@@ -167,12 +167,12 @@ def getNews():
 def getFinData():
     url = (
         "https://query.yahooapis.com/v1/public/yql?q=select%20symbol%2C%20LastTradePriceOnly%20"
-        "from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%0A%22DBA%22%2C%0A%22"
-        "USO%22%2C%0A%22IYZ%22%2C%0A%22EEM%22%2C%0A%22VPL%22%2C%0A%22XLE%22%2C%0A%22HEDJ%22%2C%"
-        "0A%22XLF%22%2C%0A%22XLV%22%2C%0A%22EPI%22%2C%0A%22XLI%22%2C%0A%22EWJ%22%2C%0A%22ILF%22"
-        "%2C%0A%22BLV%22%2C%0A%22UDN%22%2C%0A%22XLB%22%2C%0A%22IYR%22%2C%0A%22SCPB%22%2C%0A%22F"
-        "XE%22%2C%0A%22IWM%22%2C%0A%22XLK%22%2C%0A%22XLU%22)&format=json&diagnostics=true&env=s"
-        "tore%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
+        "from%20yahoo.finance.quote%20where%20symbol%20in%20(%22MCHI%22%2C%20%22DBA%22%2C%20%22"
+        "VPL%22%2C%20%22XLE%22%2C%20%22HEDJ%22%2C%20%22XLF%22%2C%20%22XLV%22%2C%20%22EPI%22%2C%"
+        "20%22XLI%22%2C%20%22EWJ%22%2C%20%22ILF%22%2C%20%22BLV%22%2C%20%22UDN%22%2C%20%22XLB%22"
+        "%2C%20%22IYR%22%2C%20%22SCPB%22%2C%20%22FXE%22%2C%20%22IWM%22%2C%20%22XLK%22%2C%20%22G"
+        "ULF%22%2C%20%22EZA%22%2C%20%22AFK%22%2C%20%22IYH%22%2C%20%22ARI%22)&format=json&diagno"
+        "stics=true&env=store%3A%2F%2Fdatatables.org%2Falltableswithkeys&callback="
     )
     rq = requests.get(url)
     date = rq.json()["query"]["created"]

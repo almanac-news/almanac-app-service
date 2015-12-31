@@ -134,8 +134,11 @@ def extractArticles(obj):
 
                 rs.hmset(key, article)
                 rs.expire(key, 3600)
-                r.db('test').table('news').wait()
-                r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection'], 'likes': 0, 'created_date': obj['created_date']}).run(conn)
+                try:
+                    r.db('test').table('news').wait()
+                    r.db('test').table('news').insert({'id': key, 'article': article, 'section': obj['section'], 'subsection': obj['subsection'], 'likes': 0, 'created_date': obj['created_date']}).run(conn)
+                except:
+                    pass
 
 #Pull articles from NYT Newswire API
 def getNews():
@@ -175,9 +178,12 @@ def getFinData():
     date = rq.json()["query"]["created"]
     obj = rq.json()["query"]["results"]["quote"]
     for datum in obj:
-        abnormalPrice(datum)
-        r.db('test').table('finance').wait()
-        r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': date, 'price': datum["LastTradePriceOnly"]}).run(conn)
+        try:
+            abnormalPrice(datum)
+            r.db('test').table('finance').wait()
+            r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': date, 'price': datum["LastTradePriceOnly"]}).run(conn)
+        except:
+            pass
     gmt = time.gmtime(time.time())
     now = str(gmt.tm_year) + '-' + str(gmt.tm_mon) + '-' + str(gmt.tm_mday) + 'T' + str(gmt.tm_hour) + ':' + str(gmt.tm_min) + ':' + str(gmt.tm_sec)
     print 'stored the data: ' + now

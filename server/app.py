@@ -27,6 +27,37 @@ if 'finance' not in r.db('test').table_list().run(conn):
 if 'subscriptions' not in r.db('test').table_list().run(conn):
     r.db('test').table_create('subscriptions').run(conn)
 
+#Hardcoded - v2 should be a rolling calculation.
+standardDevs = [
+    {'id': 'BLV', 'avg': 91.34, 'std': 3.70, 'latest': 0, 'categories': ['Politics']},
+    {'id': 'DBA', 'avg': 22.00, 'std': 1.14, 'latest': 0, 'categories': ['National']},
+    {'id': 'EEM', 'avg': 37.82, 'std': 3.45, 'latest': 0, 'categories': ['REPLACE']},
+    {'id': 'EPI', 'avg': 21.50, 'std': 1.55, 'latest': 0, 'categories': ['Asia Pacific']},
+    {'id': 'EWJ', 'avg': 12.39, 'std': 0.59, 'latest': 0, 'categories': ['Asia Pacific']},
+    {'id': 'FXE', 'avg': 109.06, 'std': 3.02, 'latest': 0, 'categories': ['Europe']},
+    {'id': 'HEDJ', 'avg': 61.59, 'std': 3.95, 'latest': 0, 'categories': ['Europe']},
+    {'id': 'ILF', 'avg': 27.75, 'std': 3.61, 'latest': 0, 'categories': ['Americas']},
+    {'id': 'IWM', 'avg': 119.81, 'std': 4.79, 'latest': 0, 'categories': ['Business Day']},
+    {'id': 'IYR', 'avg': 75.81, 'std': 3.19, 'latest': 0, 'categories': ['Real Estate']},
+    {'id': 'IYZ', 'avg': 29.55, 'std': 1.06, 'latest': 0, 'categories': ['REPLACE']},
+    {'id': 'MCHI', 'avg': 51.72, 'std': 5.91, 'latest': 0, 'categories': ['Asia Pacific']},
+    {'id': 'SCPB', 'avg': 30.59, 'std': 0.09, 'latest': 0, 'categories': ['Politics']},
+    {'id': 'UDN', 'avg': 22.03, 'std': 0.54, 'latest': 0, 'categories': ['Politics']},
+    {'id': 'USO', 'avg': 16.68, 'std': 2.77, 'latest': 0, 'categories': ['Asia Pacific']},
+    {'id': 'VPL', 'avg': 59.43, 'std': 3.01, 'latest': 0, 'categories': ['Asia Pacific']},
+    {'id': 'XLB', 'avg': 47.16, 'std': 3.19, 'latest': 0, 'categories': ['Science']},
+    {'id': 'XLE', 'avg': 72.60, 'std': 6.75, 'latest': 0, 'categories': ['Technology']},
+    {'id': 'XLF', 'avg': 24.21, 'std': 0.77, 'latest': 0, 'categories': ['Business Day']},
+    {'id': 'XLI', 'avg': 54.67, 'std': 2.03, 'latest': 0, 'categories': ['Business Day']},
+    {'id': 'XLK', 'avg': 42.13, 'std': 1.40, 'latest': 0, 'categories': ['Technology']},
+    {'id': 'XLU', 'avg': 44.11, 'std': 1.84, 'latest': 0, 'categories': ['REPLACE']},
+    {'id': 'XLV', 'avg': 72.23, 'std': 2.71, 'latest': 0, 'categories': ['Health']}
+    ]
+
+if 'history' not in r.db('test').table_list().run(conn):
+    r.db('test').table_create('history').run(conn)
+    r.db('test').table('history').insert(standardDevs).run(conn)
+
 
 # setup connection to NYT and programmatically login with mechanize
 #mechanize setup for cookies and ignoring robots.txt
@@ -143,11 +174,27 @@ def getFinData():
     date = rq.json()["query"]["created"]
     obj = rq.json()["query"]["results"]["quote"]
     for datum in obj:
+        abnormalPrice(datum)
         r.db('test').table('finance').wait()
         r.db('test').table('finance').insert({'symbol': datum["symbol"], 'time': date, 'price': datum["LastTradePriceOnly"]}).run(conn)
     gmt = time.gmtime(time.time())
     now = str(gmt.tm_year) + '-' + str(gmt.tm_mon) + '-' + str(gmt.tm_mday) + 'T' + str(gmt.tm_hour) + ':' + str(gmt.tm_min) + ':' + str(gmt.tm_sec)
     print 'stored the data: ' + now
+
+def abnormalPrice(datum):
+    for record in standardDevs:
+        if record['id'] == datum['symbol']:
+            if (float(datum['LastTradePriceOnly']) > (record['avg'] + 2*record['std'])) or (float(datum['LastTradePriceOnly']) < (record['avg'] - 2*record['std'])):
+                lastAbnormal = r.db('test').table('history').get(record['id']).pluck('latest').run(conn)
+                if time.time()-lastAbnormal['latest'] > 12*60*60:
+                    r.db('test').table('history').get(record['id']).update({'latest': time.time()}).run(conn)
+                    return True
+                else:
+                    break
+            else:
+                break
+    return False
+
 
 def populateNews():
     next_call = time.time()

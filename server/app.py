@@ -26,6 +26,10 @@ if 'finance' not in r.db('test').table_list().run(conn):
     r.db('test').table('finance').index_create('time').run(conn)
 if 'subscriptions' not in r.db('test').table_list().run(conn):
     r.db('test').table_create('subscriptions').run(conn)
+if 'comments' not in r.db('test').table_list().run(conn):
+    r.db('test').table_create('comments').run(conn)
+    r.db('test').table('comments').index_create('created_at').run(conn)
+
 
 #Hardcoded - v2 should be a rolling calculation.
 standardDevs = [

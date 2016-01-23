@@ -1,11 +1,11 @@
 [![Build Status](https://circleci.com/gh/almanac-news/almanac-app-service.svg?style=shield&circle-token=:circle-token)](https://circleci.com/gh/almanac-news/almanac-app-service)
 
-[![Coverage Status](https://coveralls.io/repos/almanac-news/almanac-app-service/badge.svg?branch=dev&service=github)](https://coveralls.io/github/almanac-news/almanac-app-service?branch=dev)
-
 # almanac-app-service
-Flask server providing data aggregation, processing, and api endpoints for the web-server
+A multi-threaded Python service, providing data aggregation and scraping, database storage, and notification support
 
 ### To run:
+
+_To run it locally:_
 
 If you don't have virtualenv installed, from command line run:
 
@@ -15,29 +15,14 @@ Clone the repo and set up a virtual environment inside it:
 
 `virtualenv venv`
 
-Then grab Flask:
+Then activate it with:
 
-`pip install Flask`
+`source venv/bin/activate`
 
 To start the server:
 
 `python app.py`
 
-### For Testing:
+### Note: The most recent version of this must be run with the other modules of Alamanc News including the Redis cache and RethinkDB!!
 
-Inside the project repo, run:
-
-`nosetests -v --with-coverage --cover-inclusive --cover-package=server`
-
-### API Endpoints:
-
-##### /news
-Currently returns the headline, url, abstract, and created_date of the 10 newest articles from NYT newswire in all categories.
-
-
-##### /top/_category_
-Does the same with top articles from NYT in a specific category taken from the following: home, world, national, politics, nyregion, business, opinion,
-technology, science, health, sports, arts, fashion, dining, travel, magazine, realestate.
-
-##### /date/_date_
-Takes a date and returns the USD/EUR conversion rate (querying yahoo finance API) each day from an arbitrary start date up to the parameter. Current arbitrary start date is: 2015-11-23.
+The architecture is now such that docker-compose with multiple data volumes and linking is integral. The service will not run without at least the redis and rethink links out.
